@@ -109,9 +109,13 @@ hbq4_result <- safe_call(hbq_summary_26, safe_select(df_filled, hbq_4_cols))
 
 hhia1_result  <- hhia_summary(df[, hhia_1_cols, drop = FALSE])
 hhia2_result  <- hhia_summary(df[, hhia_2_cols, drop = FALSE])
+hhia3_result  <- hhia_summary(df[, hhia_3_cols, drop = FALSE])
+hhia4_result  <- hhia_summary(df[, hhia_4_cols, drop = FALSE])
 
 hhie1_result  <- hhie_summary(df[, hhie_1_cols, drop = FALSE])
 hhie2_result  <- hhie_summary(df[, hhie_2_cols, drop = FALSE])
+hhie3_result  <- hhie_summary(df[, hhie_3_cols, drop = FALSE])
+hhie4_result  <- hhie_summary(df[, hhie_4_cols, drop = FALSE])
 
 # ---- Combine everything ----
 df_final <- df |>
@@ -127,8 +131,12 @@ df_final <- df |>
     hbp4_result   = hbp4_result,
     hhia1_result  = hhia1_result,
     hhia2_result  = hhia2_result,
+    hhia3_result  = hhia3_result,
+    hhia4_result  = hhia4_result,
     hhie1_result  = hhie1_result,
     hhie1_result  = hhie2_result,
+        hhie3_result  = hhie3_result,
+    hhie4_result  = hhie4_result,
   ) |>
   select(any_of(c(
     demo_cols,
