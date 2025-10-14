@@ -24,6 +24,29 @@ df_filled <- df %>%
   fill(all_of(demo_cols), .direction = "downup") %>%
   ungroup()
 
+# helpers
+
+take_first_n_cols <- function(d, n = 26) {
+  d[, seq_len(min(n, ncol(d))), drop = FALSE]
+}
+
+safe_select <- function(d, cols) {
+  d[, intersect(cols, names(d)), drop = FALSE]
+}
+
+# Wrapper so hbq_summary only ever sees the first 26 columns
+hbq_summary_26 <- function(d) {
+  hbq_summary(take_first_n_cols(d, 26))
+}
+
+# Optionally, general safety wrapper to avoid calling on 0-col data
+safe_call <- function(fun, d) {
+  if (is.null(d) || ncol(d) == 0) return(NULL)
+  fun(d)
+}
+
+
+
 # split the df into df on each questionnaire
 
 cols_with_prefix <- function(nms, prefix) {
@@ -70,10 +93,10 @@ aphab2_result <- aphab_summary(df[, aphab_2_cols, drop = FALSE])
 aphab3_result <- aphab_summary(df[, aphab_3_cols, drop = FALSE])
 aphab4_result <- aphab_summary(df[, aphab_4_cols, drop = FALSE])
 
-hbp1_result   <- hbq_summary(df[, hbq_1_cols, drop = FALSE])  
-hbp2_result   <- hbq_summary(df[, hbq_2_cols, drop = FALSE]) 
-hbp3_result   <- hbq_summary(df[, hbq_3_cols, drop = FALSE]) 
-hbp4_result   <- hbq_summary(df[, hbq_4_cols, drop = FALSE]) 
+hbq1_result <- safe_call(hbq_summary_26, safe_select(df_filled, hbq_1_cols))
+hbq2_result <- safe_call(hbq_summary_26, safe_select(df_filled, hbq_2_cols))
+hbq3_result <- safe_call(hbq_summary_26, safe_select(df_filled, hbq_3_cols))
+hbq4_result <- safe_call(hbq_summary_26, safe_select(df_filled, hbq_4_cols))
 
 hhia1_result  <- hhia_summary(df[, hhia_1_cols, drop = FALSE])
 hhia2_result  <- hhia_summary(df[, hhia_2_cols, drop = FALSE])
