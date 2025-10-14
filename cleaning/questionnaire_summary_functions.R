@@ -2,30 +2,50 @@
 #how to copy down demographics (fn to apply to variable?)
 
 
-hbq_summary <- function(input_data){
-  #check inputs- should be a dataframe of width 26
-  if( !is.data.frame(input_data)) { 
-    print("not a data frame")  #fix print syntax here
-    return(NULL)
-  } 
-  if(ncol(input_data) != 26) {
-    print("check input width")
+hbq_summary <- function(input_data) {
+  # --- checks ---
+  if (!is.data.frame(input_data)) {
+    message("hbq_summary: input is not a data.frame/tibble.")
     return(NULL)
   }
-  #create additional columns for the reversed-value questions
-  input_data <- mutate(input_data, rev6 = as.integer(10-input_data[,6]), rev8 = as.integer(10-input_data[,8]),
-                       rev16 = as.integer(10-input_data[,16]), rev17 = as.integer(10-input_data[,17]), rev18 = as.integer(10-input_data[,18]))
+  if (ncol(input_data) < 26) {
+    message("hbq_summary: need at least 26 columns.")
+    return(NULL)
+  }
   
-  #create mean scores
-  input_data <- input_data %>% mutate(susceptibility = rowMeans(cbind(input_data[,1], input_data[,7], input_data$rev16, input_data[,22])))
-  input_data <- mutate(input_data, severity = rowMeans(cbind(input_data[,2], input_data[,12], input_data[,23])))
-  input_data <- mutate(input_data, benefits = rowMeans(cbind(input_data[,3], input_data$rev8, input_data$rev17, input_data[,20], input_data[,24])))
-  input_data <- mutate(input_data, barriers = rowMeans(cbind(input_data[,4], input_data[,9], input_data[,11], input_data[,13], input_data[,15], input_data$rev18, input_data[,21], input_data[,26])))
-  input_data <- mutate(input_data, cues_action = rowMeans(cbind(input_data[,5], input_data[,14], input_data[,19])))
-  input_data <- mutate(input_data, efficacy = rowMeans(cbind(input_data$rev6, input_data[,10], input_data[,25])))
+  # only take the first 26 columns (as requested)
+  input_data <- input_data[, 1:26, drop = FALSE]
   
-  output_data <- select(input_data, susceptibility, severity, benefits, barriers, cues_action, efficacy)
-  return(output_data)
+  # coerce all to numeric once (avoids list/character issues)
+  input_num <- dplyr::mutate(
+    input_data,
+    dplyr::across(dplyr::everything(), ~ suppressWarnings(as.numeric(.x)))
+  )
+  
+  # reverse-coded items (0–10 scale; change 10 if your max differs)
+  rev6  <- 10 - input_num[[6]]
+  rev8  <- 10 - input_num[[8]]
+  rev16 <- 10 - input_num[[16]]
+  rev17 <- 10 - input_num[[17]]
+  rev18 <- 10 - input_num[[18]]
+  
+  # composite scores
+  susceptibility <- rowMeans(cbind(input_num[[1]],  input_num[[7]],  rev16,            input_num[[22]]), na.rm = TRUE)
+  severity       <- rowMeans(cbind(input_num[[2]],  input_num[[12]], input_num[[23]]),                   na.rm = TRUE)
+  benefits       <- rowMeans(cbind(input_num[[3]],  rev8,            rev17,            input_num[[20]],  input_num[[24]]), na.rm = TRUE)
+  barriers       <- rowMeans(cbind(input_num[[4]],  input_num[[9]],  input_num[[11]], input_num[[13]],
+                                   input_num[[15]], rev18,           input_num[[21]], input_num[[26]]), na.rm = TRUE)
+  cues_action    <- rowMeans(cbind(input_num[[5]],  input_num[[14]], input_num[[19]]),                   na.rm = TRUE)
+  efficacy       <- rowMeans(cbind(rev6,            input_num[[10]], input_num[[25]]),                   na.rm = TRUE)
+  
+  dplyr::tibble(
+    susceptibility = susceptibility,
+    severity       = severity,
+    benefits       = benefits,
+    barriers       = barriers,
+    cues_action    = cues_action,
+    efficacy       = efficacy
+  )
 }
 
 hhia_summary <- function(input_data) {
