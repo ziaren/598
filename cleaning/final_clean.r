@@ -73,15 +73,24 @@ hbq_2_cols <- nms[str_detect(nms, "^hbq_.*_eng_v2$")]
 hbq_3_cols <- nms[str_detect(nms, "^hbq_.*_eng$")]
 hbq_4_cols <- setdiff(hbq_cols, c(hbq_1_cols, hbq_2_cols, hbq_3_cols))
 
-# hhia groups, problems with hhia_3_cols, undistinguishable
+# hhia groups
 hhia_1_cols <- nms[str_detect(nms, "^hhia.*_v2_v4$")]
 hhia_2_cols <- nms[str_detect(nms, "^hhia.*_v2$")]
-hhia_3_cols <- setdiff(hhia_cols, union(hhia_1_cols, hhia_2_cols))
 
-# hhi4 groups
+hhia_3plus_cols <- setdiff(hhia_cols, union(hhia_1_cols, hhia_2_cols))
+
+
+hhia_3_cols <- hhia_3plus_cols[seq_len(min(10, length(hhia_3plus_cols)))]
+hhia_4_cols <- hhia_3plus_cols[-seq_len(min(10, length(hhia_3plus_cols)))]
+
+
+# hhie groups
 hhie_1_cols <- nms[str_detect(nms, "^s_hhie.*_v2_v4$")]
 hhie_2_cols <- nms[str_detect(nms, "^s_hhie.*_eng$")]
-hhie_3_cols <- setdiff(hhie_cols, union(hhie_1_cols, hhie_2_cols))
+hhie_3_cols <- nms[str_detect(nms, "^s_hhie.*_eng_v2$")]
+hhie_4_cols <- setdiff(hhie_cols, union(union(hhie_1_cols, hhie_2_cols), hhie_3_cols))
+
+
 
 demo_cols <- intersect(demo_cols, nms)
 
