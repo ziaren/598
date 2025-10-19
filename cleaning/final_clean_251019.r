@@ -214,7 +214,7 @@ session2_df_tmt <- cbind(df_filled[,1:2],rep("t", 221),df_filled[,5:18], aphab1_
 names(session2_df_tmt)[3] <- "Treatment or Waitlist"
 names(session2_df_tmt)[29:30] <- c("hhia_sum","hhie_sum")
 
-session2_df_wl <- cbind(df_filled[,1:2],rep("w", 221),df_filled[,5:18], aphab2_result, hbq4_result, hhia4_result, hhie1_result) %>%
+session2_df_wl <- cbind(df_filled[,1:2],rep("w", 221),df_filled[,5:18], aphab2_result, hbq4_result, hhia4_result, hhie4_result) %>%
   filter(!is.na(ECscore))
 
 names(session2_df_wl)[3] <- "Treatment or Waitlist"
