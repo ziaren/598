@@ -234,3 +234,42 @@ final_tidy_data <- rbind(s1_full, session2_df_tmt, session2_df_wl, session3_df)
 
 
 write.csv(final_tidy_data, file = "final_data_251019.csv")
+
+
+#manual edits to final table
+
+final_tidy_data <- add_column(final_tidy_data, aided = rep(NA, 101), .after = "Treatment or Waitlist")
+
+final_tidy_data$aided <- "U"
+final_tidy_data$aided[final_tidy_data$`Treatment or Waitlist` == "t"] <- "A"
+final_tidy_data$aided[final_tidy_data$redcap_event_name == "session_3_arm_1"] <- "A"
+
+final_tidy_data$`Treatment or Waitlist`[final_tidy_data$id %in% session2_df_tmt$id] <- "T"
+final_tidy_data$`Treatment or Waitlist`[final_tidy_data$id %in% session2_df_wl$id] <- "W"
+
+
+#patient 20 session 1 hhie: row 19 col 31
+final_tidy_data[19,31] <- 28
+
+#patient 32 session 1 hhia: row 31 col 30
+final_tidy_data[31,30] <- 6
+
+#removing HHI values for those who filled out both
+#note: cutoff age is 65
+
+#patient 23 session 2
+final_tidy_data[76,30] <- NA
+#patient 43 session 2
+final_tidy_data[83,30] <- NA
+#patient 46 session 2
+final_tidy_data[85,30] <- NA
+
+final_tidy_data <- mutate(final_tidy_data, "HHI" = coalesce(final_tidy_data$hhia_sum, final_tidy_data$hhie_sum))
+
+write.csv(final_tidy_data, file = "final_data_251023-allcases.csv")
+
+final_tidy_data_complete <- filter(final_tidy_data, !is.na(final_tidy_data$ECscore))
+#remove pts 15, 38 (skipped s2), 25, 28 (missed questions on s2 HBQ), 28, 34, 36 (waitlist for s2, skipped s3)
+final_tidy_data_complete <- filter(final_tidy_data_complete, !(record_id %in% c(15, 38, 25, 28, 34, 36)))
+
+write.csv(final_tidy_data_complete, file = "final_data_251023-complete.csv")
