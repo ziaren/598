@@ -59,7 +59,7 @@ hhia_summary <- function(input_data) {
     return(NULL)
   }
   
-  input_data <- mutate(input_data, hhia_sum = rowSums(input_data[,1:10]), na.rm = T)
+  input_data <- mutate(input_data, hhia_sum = ((rowSums(input_data[,1:10]))*(-2)+60), na.rm = T)
 
   return(input_data$hhia_sum)
 
@@ -76,7 +76,7 @@ hhie_summary <- function(input_data) {
     return(NULL)
   }
   
-  input_data <- mutate(input_data, hhie_sum = rowSums(input_data[,1:10]), na.rm = T)
+  input_data <- mutate(input_data, hhie_sum = ((rowSums(input_data[,1:10]))*(-2)+60), na.rm = T)
 
 return(input_data$hhie_sum)
 
@@ -136,4 +136,16 @@ aphab_summary <- function(input_data) {
   output_data <- select(input_data, ECscore, BNscore, RVscore, AVscore, global)
   return(output_data)
 }
+
+#(sum-20)*-2 + 20 = -2sum + 40 + 20 = 60-2sum
+hhi_convert <- function(input_data) {
+  output <- input_data*(-2) +60
+  return (output)
+}
+# 
+# hhi_single <- function(input_data) {
+#   output <- input_data*(-2) +6
+#   return (output)
+# }
+
 
