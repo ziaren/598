@@ -1,81 +1,160 @@
-df <- read.csv("complete.csv")
-df_all <- read.csv("allcases.csv")
-
+library(dplyr)
+df     <- read.csv("final_data_complete.csv", check.names = TRUE)
+df_all <- read.csv("final_data_allcases.csv", check.names = TRUE)
 
 aphab_vars <- c("ECscore","BNscore","RVscore","AVscore","global")
 hbq_vars   <- c("susceptibility","severity","benefits","barriers","cues_action","efficacy")
 hhi_vars   <- c("HHI")
+
 response_vars <- intersect(
   c(aphab_vars, hbq_vars, hhi_vars),
   names(df)
 )
-df$group  <- factor(df$Treatment.or.Waitlist, levels = c("T","W"))
+
+tw_col <- if ("Treatment.or.Waitlist" %in% names(df)) {
+  "Treatment.or.Waitlist"
+} else if ("Treatment or Waitlist" %in% names(df)) {
+  "Treatment or Waitlist"
+} else {
+  stop("Cannot find a 'Treatment or Waitlist' column in df")
+}
+
+if (!"redcap_event_name" %in% names(df)) {
+  stop("Cannot find 'redcap_event_name' in df")
+}
+
+df$group  <- factor(df[[tw_col]], levels = c("T","W"))
 df$event  <- factor(df$redcap_event_name)
 df$gender <- factor(df$gender)
 df$age    <- suppressWarnings(as.numeric(df$age))
 
-# histograms of various measures
-vars_to_plot <- unique(c("age", "gender", response_vars))
+# split into treat/wait by sessions
+
+group_T <- df[df[[tw_col]] == "T", ]
+group_W <- df[df[[tw_col]] == "W", ]
+
+group_T_1 <- group_T %>% filter(event == "session_1_arm_1")
+group_T_2 <- group_T %>% filter(event == "session_2_arm_1")
+group_T_3 <- group_T %>% filter(event == "session_3_arm_1")
+
+group_W_1 <- group_W %>% filter(event == "session_1_arm_1")
+group_W_2 <- group_W %>% filter(event == "session_2_arm_1")
+group_W_3 <- group_W %>% filter(event == "session_3_arm_1")
+
+subgroups <- list(
+  T_session_1 = group_T_1,
+  T_session_2 = group_T_2,
+  T_session_3 = group_T_3,
+  W_session_1 = group_W_1,
+  W_session_2 = group_W_2,
+  W_session_3 = group_W_3
+)
+
+## sanity
+cat("Subgroup sizes:\n")
+print(sapply(subgroups, nrow))
+
+# histogram
+vars_to_plot <- unique(response_vars)
 vars_to_plot <- vars_to_plot[vars_to_plot %in% names(df)]
 
-pdf("histogram_summary.pdf", width = 7, height = 5)
-op <- par(mfrow = c(2, 2), mar = c(4, 4, 3, 1)) 
+cat("Variables to plot:\n")
+print(vars_to_plot)
 
-for (v in vars_to_plot) {
-  x <- df[[v]]
-  # numeric -> histogram
-  if (is.numeric(x)) {
-    x_ok <- x[is.finite(x)]
-    if (length(x_ok)) {
-      hist(x_ok,
-           main = paste("Histogram:", v),
-           xlab = v, col = "grey", border = "white")
-    } else {
-      plot.new(); title(main = paste("Histogram:", v))
-      mtext("No finite numeric values", side = 3, line = 0.5, cex = 0.9)
+pdf("histogram_summary_by_subgroups.pdf", width = 7, height = 5)
+
+if (length(vars_to_plot) == 0) {
+  par(mfrow = c(1, 1), mar = c(4, 4, 3, 1))
+  plot.new()
+  title("No response variables found in df")
+} else {
+  
+  for (v in vars_to_plot) {
+    cat("Plotting variable:", v, "\n")
+    x_all <- df[[v]]
+    if (!is.numeric(x_all)) {
+      cat("  -> skipped (not numeric)\n")
+      next
     }
-    next
-  }
-  # factors/characters -> bar plot of counts
-  if (is.factor(x) || is.character(x)) {
-    tab <- table(x, useNA = "ifany")
-    if (length(tab)) {
-      barplot(tab,
-              main = paste("Counts:", v),
-              xlab = v, ylab = "Frequency",
-              col = "grey", border = "white", las = 2)
-    } else {
-      plot.new(); title(main = paste("Counts:", v))
-      mtext("No values", side = 3, line = 0.5, cex = 0.9)
+
+    all_x <- unlist(lapply(subgroups, function(g) g[[v]]))
+    all_x <- all_x[is.finite(all_x)]
+    
+    if (length(all_x) == 0) {
+      par(mfrow = c(1, 1), mar = c(4, 4, 3, 1))
+      plot.new()
+      title(main = paste("Histogram:", v))
+      mtext("No finite numeric values in any subgroup", side = 3, line = 0.5, cex = 0.9)
+      next
     }
-    next
+    
+    x_limits <- range(all_x)
+
+    par(mfrow = c(2, 3), mar = c(4, 4, 3, 1))
+    
+    for (nm in names(subgroups)) {
+      g <- subgroups[[nm]]
+      x <- g[[v]]
+      x_ok <- x[is.finite(x)]
+      
+      if (length(x_ok) > 0) {
+        hist(
+          x_ok,
+          main = paste("Histogram:", v, "-", nm),
+          cex.main = 0.8,
+          xlab = v,
+          xlim = x_limits,
+          col = "grey",
+          border = "white"
+        )
+      } else {
+        plot.new()
+        title(main = paste("Histogram:", v, "-", nm),cex.main = 0.8)
+        mtext("No finite numeric values", side = 3, line = 0.5, cex = 0.9)
+      }
+    }
   }
-  # fallback for unsupported types
-  plot.new(); title(main = paste("Skip (type):", v))
 }
 
-par(op); dev.off()
+dev.off()
+
+cat("Done. PDF written to:", file.path(getwd(), "histogram_summary_by_subgroups.pdf"), "\n")
 
 # Boxplots of various measures by time/condition
 
 df <- df %>%
   mutate(
-    redcap_event_name = as.factor(redcap_event_name),
+    redcap_event_name     = as.factor(redcap_event_name),
     Treatment.or.Waitlist = as.factor(Treatment.or.Waitlist),
-    aided = as.factor(aided)
-  )
+    aided                 = as.factor(aided),
+    subgroup = case_when(
+      Treatment.or.Waitlist == "T" & redcap_event_name == "session_1_arm_1" ~ "T_session_1",
+      Treatment.or.Waitlist == "T" & redcap_event_name == "session_2_arm_1" ~ "T_session_2",
+      Treatment.or.Waitlist == "T" & redcap_event_name == "session_3_arm_1" ~ "T_session_3",
+      Treatment.or.Waitlist == "W" & redcap_event_name == "session_1_arm_1" ~ "W_session_1",
+      Treatment.or.Waitlist == "W" & redcap_event_name == "session_2_arm_1" ~ "W_session_2",
+      Treatment.or.Waitlist == "W" & redcap_event_name == "session_3_arm_1" ~ "W_session_3",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  mutate(subgroup = factor(
+    subgroup,
+    levels = c("T_session_1","T_session_2","T_session_3",
+               "W_session_1","W_session_2","W_session_3")
+  ))
 
-keep <- intersect(response_vars, names(df))
-if (length(keep) == 0) stop("None of response_vars are present in df.")
-num_keep <- keep[sapply(df[keep], is.numeric)]
-if (length(num_keep) == 0) stop("None of response_vars are numeric.")
 
 df_long <- df %>%
-  select(all_of(c(num_keep, "redcap_event_name", "Treatment.or.Waitlist", "aided"))) %>%
-  pivot_longer(cols = all_of(num_keep), names_to = "variable", values_to = "value")
+  select(all_of(c(num_keep, "redcap_event_name",
+                  "Treatment.or.Waitlist", "aided", "subgroup"))) %>%
+  pivot_longer(cols = all_of(num_keep),
+               names_to = "variable",
+               values_to = "value")
 
 plot_boxes_by <- function(group_var, ncol = 3) {
-  ggplot(df_long, aes(x = .data[[group_var]], y = value, fill = .data[[group_var]])) +
+  ggplot(df_long,
+         aes(x = .data[[group_var]], y = value,
+             fill = .data[[group_var]])) +
     geom_boxplot(width = 0.7, outlier.alpha = 0.6, na.rm = TRUE) +
     facet_wrap(~ variable, scales = "free_y", ncol = ncol) +
     labs(title = paste("Response variables by", group_var),
@@ -83,15 +162,28 @@ plot_boxes_by <- function(group_var, ncol = 3) {
     theme_bw(base_size = 11) +
     theme(
       legend.position = "none",
-      strip.text = element_text(size = 9),
-      axis.text.x = element_text(angle = 25, hjust = 1)
+      strip.text      = element_text(size = 9),
+      axis.text.x     = element_text(angle = 25, hjust = 1)
+    )
+}
+
+plot_boxes_subgroups <- function(ncol = 3) {
+  ggplot(df_long %>% filter(!is.na(subgroup)),
+         aes(x = subgroup, y = value, fill = subgroup)) +
+    geom_boxplot(width = 0.7, outlier.alpha = 0.6, na.rm = TRUE) +
+    facet_wrap(~ variable, scales = "free_y", ncol = ncol) +
+    labs(title = "Response variables by subgroup (T/W × session)",
+         x = "Subgroup", y = "Value") +
+    theme_bw(base_size = 11) +
+    theme(
+      legend.position = "none",
+      strip.text      = element_text(size = 9),
+      axis.text.x     = element_text(angle = 25, hjust = 1)
     )
 }
 
 pdf("boxplots_response_vars_by_groups.pdf", width = 11, height = 8.5)
-print(plot_boxes_by("redcap_event_name"))
-print(plot_boxes_by("Treatment.or.Waitlist"))
-print(plot_boxes_by("aided"))
+print(plot_boxes_subgroups())    
 dev.off()
 
 
@@ -210,6 +302,4 @@ for (v in response_vars) {
 }
 dev.off()
 
-
-# Look at relationship between Age and response variables
 
